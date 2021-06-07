@@ -24,7 +24,6 @@ class Kiara(commands.Bot):
                          help_attrs=dict(hidden=True), game=discord.Game(name='!help'), formatter=BotHelp())
         self.load_cogs()
         self.session = aiohttp.ClientSession(loop=self.loop)
-        self.CONSTANTS=config.CONSTANTS
 
     def load_cogs(self):
         for cog in config.base_cogs.split():
