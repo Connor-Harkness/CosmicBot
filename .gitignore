@@ -139,3 +139,4 @@ cython_debug/
 
 #VSCode default directories
 .vscode/
+DiscordBot/config.py
