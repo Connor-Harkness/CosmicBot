@@ -9,6 +9,7 @@ import aiohttp
 from cogs.utils import context
 import config
 from cogs.utils.helpFormatter import BotHelp
+from cogs.utils import db
 
 import logging
 
@@ -17,12 +18,13 @@ logging.basicConfig(level=logging.WARNING)
 desc = 'A personal bot for Waifu Worshipping'
 
 
-class Kiara(commands.Bot):
+class Cosmic(commands.Bot):
 
     def __init__(self):
         super().__init__(command_prefix=config.prefix.split(), description=desc, pm_help=None, case_insensitive=True,
                          help_attrs=dict(hidden=True), game=discord.Game(name='!help'), formatter=BotHelp())
         self.load_cogs()
+        self.db = db.DB(config.MYSQL_HOST, config.MYSQL_USER, config.MYSQL_PASSWORD, config.MYSQL_DATABASE, self.loop)
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     def load_cogs(self):
@@ -73,5 +75,5 @@ class Kiara(commands.Bot):
 
 
 if __name__ == '__main__':
-    kiara = Kiara()
-    kiara.run()
+    cosmic = Cosmic()
+    cosmic.run()
