@@ -140,3 +140,4 @@ cython_debug/
 #VSCode default directories
 .vscode/
 DiscordBot/config.py
+/DiscordBot/cogs/Moderation/GuildModeration-Contents.txt
