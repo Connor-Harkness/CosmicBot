@@ -141,3 +141,4 @@ cython_debug/
 .vscode/
 DiscordBot/config.py
 /DiscordBot/cogs/Moderation/GuildModeration-Contents.txt
+DiscordBot/config.py

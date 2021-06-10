@@ -3,6 +3,8 @@ import datetime
 
 import discord
 from discord.ext import commands
+from discord import Embed
+import datetime
 
 MONITOR_CHANNEL = 698911166206050375
 LOGS_CHANNEL = 680847352977686562
@@ -21,85 +23,73 @@ class MemberID(commands.Converter):
             return m.id
 
 
+
+
+
 class Monitor(commands.Cog):
     """Monitoring needs"""
 
     def __init__(self, bot):
         self.bot = bot
-        self.logged_users = []
 
-    async def post_member_log(self, member):
-        now = datetime.datetime.utcnow()
-        days, r = divmod(int((now - member.created_at).total_seconds()), 86400)
-        h, r = divmod(r, 3600)
-        m, s = divmod(r, 60)
-        e = discord.Embed(title=f'{member} did the intro', description=f'Made {days} days {h:02}:{m:02}:{s:02} ago',
-                          color=discord.Colour.green())
-        e.set_thumbnail(url=member.avatar_url)
-        e.set_footer(text=member.id)
-        e.timestamp = now
-        await self.bot.get_channel(LOGS_CHANNEL).send(embed=e)
+    # async def post_member_log(self, member):
+    #     now = datetime.datetime.utcnow()
+    #     days, r = divmod(int((now - member.created_at).total_seconds()), 86400)
+    #     h, r = divmod(r, 3600)
+    #     m, s = divmod(r, 60)
+    #     e = discord.Embed(title=f'{member} did the intro', description=f'Made {days} days {h:02}:{m:02}:{s:02} ago',
+    #                       color=discord.Colour.green())
+    #     e.set_thumbnail(url=member.avatar_url)
+    #     e.set_footer(text=member.id)
+    #     e.timestamp = now
+    #     await self.bot.get_channel(LOGS_CHANNEL).send(embed=e)
 
-    @commands.group(invoke_without_command=True)
-    @commands.has_any_role('Staff')
-    async def monitor(self, ctx, member: discord.User):
-        if ctx.invoked_subcommand is not None:
-            return
-        self.logged_users += [member]
-        
-        await ctx.send(f'Now monitoring {member.name}.')
-
-    @monitor.command(name="list")
-    @commands.has_any_role('Staff')
-    async def monitor_list(self, ctx):
-        if self.logged_users:
-            await ctx.send('Users currently getting logged:\n'+'\n'.join([str(self.bot.get_user(u.id)) or u for u in self.logged_users]))
-        else:
-            await ctx.send('No users are getting logged atm.')
-
-    @commands.command()
-    @commands.has_any_role('Staff')
-    async def unmonitor(self, ctx, member: discord.User):
-        self.logged_users.remove(member)
-        
-        await ctx.send(f'No longer monitoring {member.name}.')
-
+    @commands.Cog.listener()
     async def on_member_join(self, member):
-        if member.id in self.logged_users:
-            ch = self.bot.get_channel(MONITOR_CHANNEL)
-            await ch.send(f'{member.mention} joined the server.')
+        ch = self.bot.get_channel(MONITOR_CHANNEL)
+        await ch.send(f'{member.mention} joined the server.')
 
+    @commands.Cog.listener()
     async def on_member_remove(self, member):
-        if member.id in self.logged_users:
-            ch = self.bot.get_channel(MONITOR_CHANNEL)
-            await ch.send(f'{member.mention} is no longer on the server.')
-
+        ch = self.bot.get_channel(MONITOR_CHANNEL)
+        await ch.send(f'{member.mention} is no longer on the server.')
+    
     async def log(self, logtype, user_id, channel, content, attachments=''):
         await self.bot.db.execute(
             f'INSERT INTO `monitorlog` (`type`, `user_id`, `channel`, `content`, `attachments`) '
             f'VALUES (%s, %s, %s, %s, %s)', (logtype, user_id, channel, content, attachments))
 
+    @commands.Cog.listener()
     async def on_message_delete(self, message):
         att = '\n'.join(x.url for x in message.attachments)
         await self.log('delete', message.author.id, message.channel.id, message.content, att)
-
+    
+    @commands.Cog.listener()
     async def on_message_edit(self, before, after):
+        
         if before.content != after.content:
+            print(f"edit",f", {before.author.id}, {before.channel.id}, {before.content}")
+            embed=discord.Embed(title=f"USER: {before.author.name} Edited their message:")
+            embed.set_author(name="Message Edit", icon_url="http://google.com/favicon.ico")
+            embed.set_thumbnail(url="http://google.com/favicon.ico")
+            embed.add_field(name="Previous Message", value=f"{before.content}", inline=False)
+            embed.add_field(name="Edited Message", value=f"{after.content}", inline=False)
+            embed.set_footer(text=f"Log issued by: {self.bot.user.name} @ {datetime.datetime.now()}")
+            ch = self.bot.get_channel(MONITOR_CHANNEL)
+            await ch.send(embed=embed)
             await self.log('edit', before.author.id, before.channel.id, before.content)
-
+            
+    @commands.Cog.listener()
     async def on_command(self, ctx):
         print(f"on command! {ctx.author.id}, {ctx.channel.id}, {ctx.message.content}")
+        embed=discord.Embed(title=f"USER: {ctx.author.name} Used a command:")
+        embed.set_author(name="Command", icon_url="http://google.com/favicon.ico")
+        embed.set_thumbnail(url=f"{ctx.author.avatar_url}")
+        embed.add_field(name="Command", value=f"{ctx.message.content}", inline=False)
+        embed.set_footer(text=f"Log issued by: {ctx.author.name} @ {datetime.datetime.now()}")
+        ch = self.bot.get_channel(MONITOR_CHANNEL)
+        await ch.send(embed=embed)
         await self.log('command', ctx.author.id, ctx.channel.id, ctx.message.content)
-
-    # @commands.command()
-    # async def deletes(self, ctx, target: DeleteTarget = None):
-    #     if not target:
-    #         target = ctx.channel.id
-    #     deletes = await self.bot.db.fetch(
-    #         'SELECT author, content FROM `monitorlog` WHERE type="delete" AND (`author`=%s OR `channel`=%s)',
-    #         (target, target))
-    #     await ctx.send('```\n' + '\n'.join(
-    #         [f'{self.bot.get_user(author) or "?"} :{content}' for author, content in deletes]) + '```')
 
     @commands.group(invoke_without_command=True)
     @commands.has_role('Staff')
